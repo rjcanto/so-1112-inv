@@ -6,6 +6,8 @@
 #define SERVER_PORT 8888   /* Well known server port. */
 #define MAX_PENDING_CONNECTIONS 1024
 
+#define MAX_THREADS 8
+#define MIN_THREADS 2
 /*
   Estrutura que representa o estado de uma ligação
 */
