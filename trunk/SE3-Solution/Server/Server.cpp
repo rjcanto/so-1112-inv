@@ -3,6 +3,7 @@
 #include "stdafx.h"
 
 static Logger log;	/* the Logger */
+HANDLE completionPort; /* the I/O Completion Port */
 
 UINT WINAPI ProcessConnection(LPVOID arg) {
 	SOCKET connectSocket = (SOCKET) arg;
@@ -48,7 +49,13 @@ int _tmain (int argc, LPCTSTR argv []) {
 	/* Store initialization */
 	StoreInit();
 
-	/*	Follow the standard server socket/bind/listen/accept sequence */
+  /* Create completion port*/
+  if ((completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, MAX_THREADS)) == NULL) {
+		_tprintf(_T("Error %d creation IO completion port!\n"), GetLastError());
+		return FALSE;
+	}
+  
+  /*	Follow the standard server socket/bind/listen/accept sequence */
 	srvSock = socket(PF_INET, SOCK_STREAM, 0);
 	if (srvSock == INVALID_SOCKET) {
 		LoggerMessage(&log, "Failed server socket() call");
