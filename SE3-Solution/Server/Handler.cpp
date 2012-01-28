@@ -171,3 +171,11 @@ VOID ProcessRequest(PConnection cn) {
     LoggerMessage(cn->log, "End process message type %s\n", requestType);
     }
 }
+
+VOID ProcessInputRequest(PConnection cn) {
+    //TODO
+}
+
+VOID ProcessOutputRequest(PConnection cn) {
+    //TODO
+}
