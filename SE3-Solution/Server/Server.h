@@ -12,8 +12,9 @@
   Estrutura que representa o estado de uma ligação
 */
 typedef struct Connection  {
-	CHAR bufferIn[BUFFERSIZE];	/* buffer usado na leitura de dados da ligação */
-	CHAR bufferOut[BUFFERSIZE];	/* buffer usado na escrita de dados da ligação */
+  WSAOVERLAPPED ioStatus;
+	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
+	WSABUF bufferOut;	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
 	int wPos;					/* índice que identifica o que já escrito no buffer */
 	int len;					/* número de bytes presentes no buffer(usado na leitura) */
@@ -25,13 +26,13 @@ typedef struct Connection  {
 /* macros for buffered char I/O */
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
-		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn[(c)->rPos++]) : \
-		(c)->bufferIn[(c)->rPos++]
+		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
+		(c)->bufferIn.buf[(c)->rPos++]
 
 #define cputchar(cn, c)  do { \
 		if ((cn)->wPos == BUFFERSIZE) \
 			ConnectionFlushBufferToSocket(cn);	\
-	    (cn)->bufferOut[cn->wPos++] = (c); \
+	    (cn)->bufferOut.buf[cn->wPos++] = (c); \
 		} while(0)
 
 VOID ConnectionInit(PConnection c, SOCKET s, Logger *log);
