@@ -56,8 +56,8 @@ int _tmain (int argc, LPCTSTR argv []) {
 
   /* Create completion port*/
   if ((completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, MAX_THREADS)) == NULL) {
-		_tprintf(_T("Error %d creation IO completion port!\n"), GetLastError());
-		return FALSE;
+		LoggerMessage(&log, "Error creation IO completion port!");
+		return 4;
 	}
   
   /*	Follow the standard server socket/bind/listen/accept sequence */
@@ -66,7 +66,13 @@ int _tmain (int argc, LPCTSTR argv []) {
 		LoggerMessage(&log, "Failed server socket() call");
 		return 3;
 	}
-    
+   
+  /* Associate Server Socket to Completion Port */
+	if (!CreateIoCompletionPort((HANDLE) srvSock,completionPort, OUTPUT_OPER, (DWORD) MAX_THREADS) {
+		LoggerMessage(&log, "Error associating device to IO completion port!\n");
+		return 5;
+	}
+
 	/*	
 	 * Prepare the socket address structure for binding the
 	 * server socket to port number "reserved" for this service.
@@ -98,7 +104,12 @@ int _tmain (int argc, LPCTSTR argv []) {
 		}
 		LoggerMessage(&log, "Connected with %s, port %d.\n", inet_ntoa(connectSAddr.sin_addr), connectSAddr.sin_port);
 
-		_beginthreadex(NULL, 0, ProcessConnection, (LPVOID) connectSock, 0, NULL);	 
+    /* Associate Connection Socket to Completion Port */
+    if (!CreateIoCompletionPort((HANDLE) connectSock,completionPort, INPUT_OPER, (DWORD) MAX_THREADS) {
+    LoggerMessage(&log, "Error associating device to IO completion port!\n");
+    return 5;
+    }
+	//	_beginthreadex(NULL, 0, ProcessConnection, (LPVOID) connectSock, 0, NULL);	 
 		
 	}
 	 
