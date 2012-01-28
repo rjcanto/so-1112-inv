@@ -5,21 +5,46 @@
 * Used on socket buffered I/O
 */
 void ConnectionFillBufferFromSocket(PConnection c) {
+    /*
     c->len= recv(c->socket, c->bufferIn, BUFFERSIZE, 0);
     if (c->len <=0) {
         int a=2;
     }
+    c->rPos = 0;
+    */
+    c->ioStatus.Offset = 0;
+    c->ioStatus.OffsetHigh = 0;
 
-
+    WSARecv(c->socket
+        , &c->bufferIn
+        , BUFFERSIZE
+        , (LPDWORD)&c->len
+        , 0
+        , &c->ioStatus
+        , NULL
+    );
     c->rPos=0;
 }
 
 void ConnectionFlushBufferToSocket(PConnection c) {
-    if (c->wPos > 0) {
+    /*if (c->wPos > 0) {
         if (send(c->socket, c->bufferOut, c->wPos, 0) != c->wPos) {
             int a=3;
         }
         c->wPos =0;
+    }
+    */
+    if (c->wPos > 0)
+    {
+        if ( WSASend( c->socket
+            ,&c->bufferOut
+            ,BUFFERSIZE
+            ,(LPDWORD)&c->wPos
+            ,0
+            ,&c->ioStatus
+            ,NULL) == c->wPos)
+            
+            c->wPos = 0; 
     }
 }
 
@@ -68,9 +93,14 @@ void ConnectionPutInt(PConnection cn, int num) {
 }
 
 void ConnectionCopyBytes(PConnection cn, LPVOID mapAddress, DWORD fSize) {
-
     ConnectionFlushBufferToSocket(cn);
-    send(cn->socket, (const char *) mapAddress, fSize, 0);
+    //send(cn->socket, (const char *) mapAddress, fSize, 0);
+    WSASend(cn->socket
+        , &cn->bufferOut
+        , BUFFERSIZE
+        , &fSize
+        , 0
+        ,
 }
 
 void ConnectionCopyFile(PConnection cn, HANDLE hFile, int fSize) {
@@ -140,6 +170,8 @@ void ConnectionPut(PConnection cn, char* format, ...) {
 
 VOID  ConnectionInit(PConnection c, SOCKET s, Logger *log) {
     ZeroMemory(c, sizeof(Connection));
+    c->bufferIn.buf = (char *)malloc(BUFFERSIZE);
+    c->bufferOut.buf = (char *)malloc(BUFFERSIZE);
     c->socket=s;
     c->log=log;
 }
