@@ -5,13 +5,13 @@
 * Used on socket buffered I/O
 */
 void ConnectionFillBufferFromSocket(PConnection c) {
-    /*
+    
     c->len= recv(c->socket, c->bufferIn, BUFFERSIZE, 0);
     if (c->len <=0) {
         int a=2;
     }
     c->rPos = 0;
-    */
+/**
     c->ioStatus.Offset = 0;
     c->ioStatus.OffsetHigh = 0;
 
@@ -24,16 +24,18 @@ void ConnectionFillBufferFromSocket(PConnection c) {
         , NULL
     );
     c->rPos=0;
+/**/
 }
 
 void ConnectionFlushBufferToSocket(PConnection c) {
-    /*if (c->wPos > 0) {
+    if (c->wPos > 0) {
         if (send(c->socket, c->bufferOut, c->wPos, 0) != c->wPos) {
             int a=3;
         }
         c->wPos =0;
     }
-    */
+    
+/** 
     if (c->wPos > 0)
     {
         if ( WSASend( c->socket
@@ -46,6 +48,7 @@ void ConnectionFlushBufferToSocket(PConnection c) {
             
             c->wPos = 0; 
     }
+/**/
 }
 
 /*
@@ -94,13 +97,15 @@ void ConnectionPutInt(PConnection cn, int num) {
 
 void ConnectionCopyBytes(PConnection cn, LPVOID mapAddress, DWORD fSize) {
     ConnectionFlushBufferToSocket(cn);
-    //send(cn->socket, (const char *) mapAddress, fSize, 0);
+    send(cn->socket, (const char *) mapAddress, fSize, 0);
+/**
     WSASend(cn->socket
         , &cn->bufferOut
         , BUFFERSIZE
         , &fSize
         , 0
         ,
+/**/
 }
 
 void ConnectionCopyFile(PConnection cn, HANDLE hFile, int fSize) {
