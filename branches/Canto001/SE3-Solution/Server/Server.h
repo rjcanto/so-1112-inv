@@ -50,7 +50,9 @@ HANDLE completionPort;
 		} while(0)
 
 VOID ConnectionInit(PConnection c, SOCKET s, Logger *log);
- 
+
+UINT WINAPI RunOperation(LPVOID arg) ;
+
 void ConnectionFillBufferFromSocket(PConnection c);
 void ConnectionFlushBufferToSocket(PConnection c);
 
