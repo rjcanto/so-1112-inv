@@ -35,7 +35,10 @@ Connection ConnectionsList[MAX_CONNECTIONS];
 /*
 the I/O Completion Port
 */
+#ifndef CP
+#define CP
 HANDLE completionPort;
+#endif
 
 /* macros for buffered char I/O */
 #define cgetchar(c)  \
