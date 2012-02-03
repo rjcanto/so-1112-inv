@@ -9,7 +9,7 @@
 #define MAX_THREADS 8
 #define MIN_THREADS 2
 #define MAX_CONNECTIONS 8
-
+#define MAX_INACTIVE_TIME 15000
 #define INPUT_OPER 0
 #define OUTPUT_OPER 1
 
