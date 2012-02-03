@@ -177,7 +177,7 @@ VOID ProcessRequest(PConnection cn) {
     }
 }
 
-VOID ProcessInputRequest(PConnection cn) {
+VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize;
 
     if ( (lineSize = ConnectionGetLine(cn, cn->bufferIn.buf, cn->bufferIn.len)) > 0)
@@ -187,7 +187,7 @@ VOID ProcessInputRequest(PConnection cn) {
     }
 }
 
-VOID ProcessOutputRequest(PConnection cn) {
+VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize = 0;
     MessageProcessor processor;
     
