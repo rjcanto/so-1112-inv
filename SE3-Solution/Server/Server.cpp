@@ -6,6 +6,7 @@
 /*Global Status*/
 static Logger log;	/* the Logger */
 HANDLE completionPort; /* the I/O Completion Port */
+CRITICAL_SECTION mutex;
 
 #define INPUT_OPER 0
 #define OUTPUT_OPER 1
@@ -14,12 +15,60 @@ UINT WINAPI ProcessConnection(LPVOID arg) {
     SOCKET connectSocket = (SOCKET) arg;
     Connection connection;
 	
-    ConnectionInit(&connection, connectSocket, &log);	
+    ConnectionInit(&connection, connectSocket, &log);
+
+    /* Associate Connection Socket to Completion Port */
+    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, INPUT_OPER, (DWORD) MAX_THREADS) {
+        LoggerMessage(&log, "Error associating device to IO completion port!\n");
+        return 5;
+    }
+
     LoggerMessage(&log, "Start connection processing");
     ProcessRequest(&connection);
     LoggerMessage(&log, "End connection processing");
     closesocket(connectSocket);
     return 0;
+}
+
+VOID CreateThreadPool() {
+	for (int i=0; i < MAX_THREADS; ++i) {
+		_beginthreadex(NULL, 0, RunOperation,NULL,0, NULL);
+	}
+}
+
+UINT WINAPI RunOperation(LPVOID arg) {
+    DWORD transferedBytes;
+    DWORD key;
+    Connection *ConnectionsList;
+
+
+    //printf("start worker!\n");
+    while (TRUE) {
+        if (!GetQueuedCompletionStatus(
+                            completionPort
+                            , &transferedBytes
+                            , &key
+                            , (OVERLAPPED **) &ConnectionsList
+                            , INFINITE))
+            return 0;
+        //printf("start Job, key=%d!\n", key);
+        EnterCriticalSection(&mutex);
+        switch (key) {
+        case INPUT_OPER:
+            ProcessOutputRequest(ConnectionsList);
+            break;
+        case OUTPUT_OPER:
+            ProcessInputRequest(ConnectionsList);
+            break;
+        }
+        /**
+        if (writeOpers == 0 && readOpers==0) {
+            //printf("Job done!\n");
+            SetEvent(workDone);
+        }
+        /**/
+        LeaveCriticalSection(&mutex);
+    }	
 }
 
 int _tmain (int argc, LPCTSTR argv []) {
@@ -104,12 +153,7 @@ int _tmain (int argc, LPCTSTR argv []) {
         }
         LoggerMessage(&log, "Connected with %s, port %d.\n", inet_ntoa(connectSAddr.sin_addr), connectSAddr.sin_port);
 
-        /* Associate Connection Socket to Completion Port */
-        if (!CreateIoCompletionPort((HANDLE) connectSock,completionPort, INPUT_OPER, (DWORD) MAX_THREADS) {
-            LoggerMessage(&log, "Error associating device to IO completion port!\n");
-            return 5;
-        }
-        //	_beginthreadex(NULL, 0, ProcessConnection, (LPVOID) connectSock, 0, NULL);	 
+        ProcessConnection((LPVOID) connectSock);
 
     }
 
