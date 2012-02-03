@@ -12,6 +12,10 @@
 
 #define INPUT_OPER 0
 #define OUTPUT_OPER 1
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*
   Estrutura que representa o estado de uma ligação
 */
@@ -32,15 +36,8 @@ typedef struct Connection  {
 */
 Connection ConnectionsList[MAX_CONNECTIONS];
 
-/*
-the I/O Completion Port
-*/
-#ifndef CP
-#define CP
-HANDLE completionPort;
-#endif
-
 /* macros for buffered char I/O */
+
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
 		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
@@ -76,5 +73,8 @@ VOID ToUpper(char *str);
 
 /* Handler entry point */
 VOID ProcessRequest(PConnection cn);
-VOID ProcessInputRequest(PConnection cn);
-VOID ProcessOutputRequest(PConnection cn);
+VOID ProcessInputRequest(PConnection cn, HANDLE completionPort);
+VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort);
+#ifdef __cplusplus
+} // extern "C"
+#endif

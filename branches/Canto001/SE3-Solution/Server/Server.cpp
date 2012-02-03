@@ -8,7 +8,10 @@ static Logger log;	/* the Logger */
 
 CRITICAL_SECTION mutex;
 
-
+/*
+the I/O Completion Port
+*/
+HANDLE completionPort;
 
 UINT WINAPI ProcessConnection(LPVOID arg) {
     SOCKET connectSocket = (SOCKET) arg;
@@ -54,10 +57,10 @@ UINT WINAPI RunOperation(LPVOID arg) {
         EnterCriticalSection(&mutex);
         switch (key) {
         case INPUT_OPER:
-            ProcessOutputRequest(ConnectionsList);
+            ProcessOutputRequest(ConnectionsList, completionPort);
             break;
         case OUTPUT_OPER:
-            ProcessInputRequest(ConnectionsList);
+            ProcessInputRequest(ConnectionsList, completionPort);
             break;
         }
         /**
