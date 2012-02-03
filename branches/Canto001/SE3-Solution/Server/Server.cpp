@@ -5,11 +5,10 @@
 
 /*Global Status*/
 static Logger log;	/* the Logger */
-HANDLE completionPort; /* the I/O Completion Port */
+
 CRITICAL_SECTION mutex;
 
-#define INPUT_OPER 0
-#define OUTPUT_OPER 1
+
 
 UINT WINAPI ProcessConnection(LPVOID arg) {
     SOCKET connectSocket = (SOCKET) arg;
