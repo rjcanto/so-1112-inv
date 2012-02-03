@@ -43,8 +43,6 @@ UINT WINAPI RunOperation(LPVOID arg) {
     DWORD key;
     Connection *ConnectionsList;
 
-
-    //printf("start worker!\n");
     while (TRUE) {
         if (!GetQueuedCompletionStatus(
                             completionPort
@@ -53,7 +51,6 @@ UINT WINAPI RunOperation(LPVOID arg) {
                             , (OVERLAPPED **) &ConnectionsList
                             , INFINITE))
             return 0;
-        //printf("start Job, key=%d!\n", key);
         EnterCriticalSection(&mutex);
         switch (key) {
         case INPUT_OPER:
@@ -63,12 +60,6 @@ UINT WINAPI RunOperation(LPVOID arg) {
             ProcessInputRequest(ConnectionsList, completionPort);
             break;
         }
-        /**
-        if (writeOpers == 0 && readOpers==0) {
-            //printf("Job done!\n");
-            SetEvent(workDone);
-        }
-        /**/
         LeaveCriticalSection(&mutex);
     }	
 }
