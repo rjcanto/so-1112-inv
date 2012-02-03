@@ -10,12 +10,14 @@
 #define MIN_THREADS 2
 #define MAX_CONNECTIONS 8
 
+#define INPUT_OPER 0
+#define OUTPUT_OPER 1
 /*
   Estrutura que representa o estado de uma ligação
 */
 typedef struct Connection  {
 //TODO Connection in asynchronous mode
- // WSAOVERLAPPED ioStatus;
+  OVERLAPPED ioStatus;
 	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
 	WSABUF bufferOut;	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
@@ -30,6 +32,10 @@ typedef struct Connection  {
 */
 Connection ConnectionsList[MAX_CONNECTIONS];
 
+/*
+the I/O Completion Port
+*/
+HANDLE completionPort;
 
 /* macros for buffered char I/O */
 #define cgetchar(c)  \
