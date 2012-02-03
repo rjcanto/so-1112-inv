@@ -8,11 +8,20 @@
 
 #define MAX_THREADS 8
 #define MIN_THREADS 2
+#define MAX_CONNECTIONS 8
+
+#define INPUT_OPER 0
+#define OUTPUT_OPER 1
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*
   Estrutura que representa o estado de uma ligação
 */
 typedef struct Connection  {
-  WSAOVERLAPPED ioStatus;
+//TODO Connection in asynchronous mode
+  OVERLAPPED ioStatus;
 	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
 	WSABUF bufferOut;	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
@@ -22,8 +31,13 @@ typedef struct Connection  {
 	Logger *log;				/* processador das mensagens de log */
 } Connection, *PConnection;
 
+/*
+  Lista de conecções com operações  
+*/
+Connection ConnectionsList[MAX_CONNECTIONS];
 
 /* macros for buffered char I/O */
+
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
 		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
@@ -36,7 +50,9 @@ typedef struct Connection  {
 		} while(0)
 
 VOID ConnectionInit(PConnection c, SOCKET s, Logger *log);
- 
+
+UINT WINAPI RunOperation(LPVOID arg) ;
+
 void ConnectionFillBufferFromSocket(PConnection c);
 void ConnectionFlushBufferToSocket(PConnection c);
 
@@ -57,3 +73,8 @@ VOID ToUpper(char *str);
 
 /* Handler entry point */
 VOID ProcessRequest(PConnection cn);
+VOID ProcessInputRequest(PConnection cn, HANDLE completionPort);
+VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort);
+#ifdef __cplusplus
+} // extern "C"
+#endif
