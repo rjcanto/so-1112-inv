@@ -6,6 +6,8 @@
 /*Global Status*/
 static Logger log;	/* the Logger */
 
+DWORD threadsCounter;
+DWORD activeThreadsCounter;
 CRITICAL_SECTION mutex;
 
 /*
@@ -49,18 +51,38 @@ UINT WINAPI RunOperation(LPVOID arg) {
                             , &transferedBytes
                             , &key
                             , (OVERLAPPED **) &ConnectionsList
-                            , INFINITE))
-            return 0;
-        EnterCriticalSection(&mutex);
+                            , MAX_INACTIVE_TIME))
+        {
+            if(GetLastError() == WAIT_TIMEOUT){
+                EnterCriticalSection(&mutex);
+                if (threadsCounter > MIN_THREADS) {
+                    threadsCounter--;
+                    LeaveCriticalSection(&mutex);
+                    break;
+                } else {
+                    LeaveCriticalSection(&mutex);
+                    continue;
+                }
+            } else {
+                EnterCriticalSection(&mutex);
+                threadsCounter--;
+                LoggerMessage(&log, "Error %d in GetQueuedCompletionStatus.\n", GetLastError());
+                break;
+                LeaveCriticalSection(&mutex);
+            }
+        }
         switch (key) {
         case INPUT_OPER:
+            EnterCriticalSection(&mutex);
             ProcessOutputRequest(ConnectionsList, completionPort);
+            LeaveCriticalSection(&mutex);        
             break;
         case OUTPUT_OPER:
+            EnterCriticalSection(&mutex);
             ProcessInputRequest(ConnectionsList, completionPort);
+            LeaveCriticalSection(&mutex);
             break;
-        }
-        LeaveCriticalSection(&mutex);
+        }   
     }	
 }
 
