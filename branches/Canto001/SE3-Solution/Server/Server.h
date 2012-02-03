@@ -8,11 +8,14 @@
 
 #define MAX_THREADS 8
 #define MIN_THREADS 2
+#define MAX_CONNECTIONS 8
+
 /*
   Estrutura que representa o estado de uma ligação
 */
 typedef struct Connection  {
-  WSAOVERLAPPED ioStatus;
+//TODO Connection in asynchronous mode
+ // WSAOVERLAPPED ioStatus;
 	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
 	WSABUF bufferOut;	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
@@ -21,6 +24,11 @@ typedef struct Connection  {
 	SOCKET socket;				/* o socket de onde o buffer foi lidos ou para onde vai ser escrito */
 	Logger *log;				/* processador das mensagens de log */
 } Connection, *PConnection;
+
+/*
+  Lista de conecções com operações  
+*/
+Connection ConnectionsList[MAX_CONNECTIONS];
 
 
 /* macros for buffered char I/O */
@@ -57,3 +65,5 @@ VOID ToUpper(char *str);
 
 /* Handler entry point */
 VOID ProcessRequest(PConnection cn);
+VOID ProcessInputRequest(PConnection cn);
+VOID ProcessOutputRequest(PConnection cn);

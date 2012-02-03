@@ -158,24 +158,49 @@ VOID ProcessRequest(PConnection cn) {
     int lineSize;
 
     while ( (lineSize = ConnectionGetLine(cn, requestType, MAXSIZE)) > 0)
-    {   MessageProcessor processor;
-    ToUpper(requestType);
-    if ((processor = processorForMessageType(requestType)) == NULL)
-    {
-        LoggerMessage(cn->log, "Handler - Unknown message type(%s, size=%d). Servicing ending.", requestType, lineSize);
-        break;
-    }
-    // Dispatch request processing
-    LoggerMessage(cn->log, "Start process message type %s\n", requestType);
-    processor(cn);
-    LoggerMessage(cn->log, "End process message type %s\n", requestType);
+    {   
+        MessageProcessor processor;
+        ToUpper(requestType);
+        if ((processor = processorForMessageType(requestType)) == NULL)
+        {
+            LoggerMessage(cn->log, "Handler - Unknown message type(%s, size=%d). Servicing ending.", requestType, lineSize);
+            break;
+        }
+        // Dispatch request processing
+        LoggerMessage(cn->log, "Start process message type %s\n", requestType);
+        processor(cn);
+        LoggerMessage(cn->log, "End process message type %s\n", requestType);
     }
 }
 
 VOID ProcessInputRequest(PConnection cn) {
-    //TODO
+    int lineSize;
+
+    if ( (lineSize = ConnectionGetLine(cn, cn->bufferIn.buf, cn->bufferIn.len)) > 0)
+    {   
+        //MessageProcessor processor;
+        ToUpper(cn->bufferIn.buf);
+        PostQueuedCompletionStatus();
+
+//TODO ProcessInputRequest
+    }
 }
 
 VOID ProcessOutputRequest(PConnection cn) {
-    //TODO
+    int lineSize;
+//TODO ProcessOutputRequest
+    while ( (lineSize = ConnectionGetLine(cn, cn->bufferOut.buf, cn->bufferOut.len)) > 0)
+    {   
+        MessageProcessor processor;
+        ToUpper(cn->bufferOut.buf);
+        if ((processor = processorForMessageType(cn->bufferOut.buf)) == NULL)
+        {
+            LoggerMessage(cn->log, "Handler - Unknown message type(%s, size=%d). Servicing ending.", cn->bufferOut.buf, lineSize);
+            break;
+        }
+        // Dispatch request processing
+        LoggerMessage(cn->log, "Start process message type %s\n", cn->bufferOut.buf);
+        processor(cn);
+        LoggerMessage(cn->log, "End process message type %s\n", cn->bufferOut.buf);
+    }
 }
