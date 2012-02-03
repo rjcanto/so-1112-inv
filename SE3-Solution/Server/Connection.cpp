@@ -6,7 +6,7 @@
 */
 void ConnectionFillBufferFromSocket(PConnection c) {
     
-    c->len= recv(c->socket, c->bufferIn, BUFFERSIZE, 0);
+    c->len= recv(c->socket, c->bufferIn.buf, BUFFERSIZE, 0);
     if (c->len <=0) {
         int a=2;
     }
@@ -29,7 +29,7 @@ void ConnectionFillBufferFromSocket(PConnection c) {
 
 void ConnectionFlushBufferToSocket(PConnection c) {
     if (c->wPos > 0) {
-        if (send(c->socket, c->bufferOut, c->wPos, 0) != c->wPos) {
+        if (send(c->socket, c->bufferOut.buf, c->wPos, 0) != c->wPos) {
             int a=3;
         }
         c->wPos =0;

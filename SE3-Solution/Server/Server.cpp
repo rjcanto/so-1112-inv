@@ -17,7 +17,7 @@ UINT WINAPI ProcessConnection(LPVOID arg) {
     ConnectionInit(&connection, connectSocket, &log);
 
     /* Associate Connection Socket to Completion Port */
-    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, INPUT_OPER, (DWORD) MAX_THREADS) {
+    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, INPUT_OPER, (DWORD) MAX_THREADS)) {
         LoggerMessage(&log, "Error associating device to IO completion port!\n");
         return 5;
     }
@@ -116,7 +116,7 @@ int _tmain (int argc, LPCTSTR argv []) {
     }
 
     /* Associate Server Socket to Completion Port */
-    if (!CreateIoCompletionPort((HANDLE) srvSock,completionPort, OUTPUT_OPER, (DWORD) MAX_THREADS) {
+    if (!CreateIoCompletionPort((HANDLE) srvSock,completionPort, OUTPUT_OPER, (DWORD) MAX_THREADS)) {
         LoggerMessage(&log, "Error associating device to IO completion port!\n");
         return 5;
     }     

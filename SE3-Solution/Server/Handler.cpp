@@ -188,7 +188,7 @@ VOID ProcessInputRequest(PConnection cn) {
 }
 
 VOID ProcessOutputRequest(PConnection cn) {
-    int lineSize;
+    int lineSize = 0;
     MessageProcessor processor;
     
     if ((processor = processorForMessageType(cn->bufferIn.buf)) == NULL)
@@ -198,7 +198,7 @@ VOID ProcessOutputRequest(PConnection cn) {
     }
     // Dispatch request processing
     LoggerMessage(cn->log, "Start process message type %s\n", cn->bufferOut.buf);
-    processor(cn);
+    lineSize = processor(cn);
     LoggerMessage(cn->log, "End process message type %s\n", cn->bufferOut.buf);
     PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) OUTPUT_OPER,&cn->ioStatus);
 }
