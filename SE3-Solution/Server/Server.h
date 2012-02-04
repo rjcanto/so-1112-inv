@@ -5,7 +5,7 @@
 
 #define SERVER_PORT 8888   /* Well known server port. */
 #define MAX_PENDING_CONNECTIONS 1024
-
+#define MAXSIZE 1024
 #define MAX_THREADS 8
 #define MIN_THREADS 2
 #define MAX_CONNECTIONS 8
@@ -22,6 +22,7 @@ extern "C" {
 typedef struct Connection  {
 //TODO Connection in asynchronous mode
   OVERLAPPED ioStatus;
+  CHAR requestType[MAXSIZE];
 	CHAR bufferIn[BUFFERSIZE];	/* buffer usado na leitura de dados da ligação */
 	CHAR bufferOut[BUFFERSIZE];	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */

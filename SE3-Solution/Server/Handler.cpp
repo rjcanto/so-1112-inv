@@ -1,6 +1,5 @@
 #include "stdafx.h"
-#define MAXSIZE 1024
-
+#define MAXFILEARGS 50
 typedef int (*MessageProcessor)(PConnection cn);
 
 /*
@@ -13,32 +12,38 @@ typedef int (*MessageProcessor)(PConnection cn);
 static int ProcessRegisterMessage(PConnection cn) {
     char line[MAXSIZE];
     int lineSize;
-
-    while ( (lineSize =ConnectionGetLine(cn, line, MAXSIZE)) > 0)
+    char *args[MAXFILEARGS];
+    char *triple[3];
+    int nElems, nArgs, i = 0;
+    if ( (lineSize =ConnectionGetLine(cn, line, MAXSIZE)) > 0)
     {
-        char *triple[3];
-        int nElems = splitLine(line, triple, ':', 3);
-        unsigned port;
-        sockaddr_in epoint;
 
-        if (nElems != 3)
+        nArgs = splitLine(line, args, ';', MAXFILEARGS);
+        for(; i < nArgs; i++)
         {
-            LoggerMessage(cn->log, "Handler - Invalid REGISTER message.");
-            return -1;
-        }
+            nElems= splitLine(args[i], triple, ':', 3);
+            unsigned port;
+            sockaddr_in epoint;
 
-        port = atoi(triple[2]);
+            if (nElems != 3)
+            {
+                LoggerMessage(cn->log, "Handler - Invalid REGISTER message [%s].", args[i]);
+                continue;
+            }
 
-        if(port == 0 || port > 0xFFFF)
-        {
-            LoggerMessage(cn->log, "Handler - Invalid port number message.");
-            return -1;
+            port = atoi(triple[2]);
+
+            if(port == 0 || port > 0xFFFF)
+            {
+                LoggerMessage(cn->log, "Handler - Invalid port number message [%s].", args[i]);
+                continue;
+            }
+            if (!buildEndPoint(&epoint, port, triple[1])) {
+                LoggerMessage(cn->log, "Handler - Invalid IP address in message [%s].", args[i]);
+                continue;
+            }
+            StoreRegister(triple[0], &epoint);
         }
-        if (!buildEndPoint(&epoint, port, triple[1])) {
-            LoggerMessage(cn->log, "Handler - Invalid IP address in message.");
-            return -1;
-        }
-        StoreRegister(triple[0], &epoint);
     }
     return lineSize;
 }
@@ -53,32 +58,36 @@ static int ProcessRegisterMessage(PConnection cn) {
 static int ProcessUnregisterMessage(PConnection cn) {
     char line[MAXSIZE];
     int lineSize;
-
-    while ( (lineSize =ConnectionGetLine(cn, line, MAXSIZE)) > 0)
+    char *args[MAXFILEARGS];
+    char *triple[3];
+    unsigned port;
+    sockaddr_in epoint;
+    int nElems,nArgs, i = 0;
+    if ( (lineSize =ConnectionGetLine(cn, line, MAXSIZE)) > 0)
     {
-        char *triple[3];
-        int nElems = splitLine(line, triple, ':', 3);
-        unsigned port;
-        sockaddr_in epoint;
-
-        if (nElems != 3)
+        nArgs = splitLine(line, args, ';', MAXFILEARGS);
+        for(; i < nArgs; i++)
         {
-            LoggerMessage(cn->log, "Handler - Invalid UNREGISTER message.");
-            return -1;
-        }
+            nElems= splitLine(args[i], triple, ':', 3);
+            if (nElems != 3)
+            {
+                LoggerMessage(cn->log, "Handler - Invalid UNREGISTER message[%s].", args[i]);
+                continue;
+            }
 
-        port = atoi(triple[2]);
+            port = atoi(triple[2]);
 
-        if(port == 0 || port > 0xFFFF)
-        {
-            LoggerMessage(cn->log, "Handler - Invalid port number message.");
-            return -1;
+            if(port == 0 || port > 0xFFFF)
+            {
+                LoggerMessage(cn->log, "Handler - Invalid port number message [%s].", args[i]);
+                continue;
+            }
+            if (!buildEndPoint(&epoint, port, triple[1])) {
+                LoggerMessage(cn->log, "Handler - Invalid IP address in message [%s].", args[i]);
+                continue;
+            }
+            StoreUnRegister(triple[0], &epoint);
         }
-        if (!buildEndPoint(&epoint, port, triple[1])) {
-            LoggerMessage(cn->log, "Handler - Invalid IP address in message.");
-            return -1;
-        }
-        StoreUnRegister(triple[0], &epoint);
     }
     return lineSize;
 }
@@ -179,9 +188,9 @@ static MessageProcessor processorForMessageType(char *msgType) {
 */
 VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize;
-    if ( (lineSize = ConnectionGetLine(cn, cn->bufferIn, BUFFERSIZE)) > 0)
-    {   
-        ToUpper(cn->bufferIn);
+    if ( (lineSize = ConnectionGetLine(cn, cn->requestType, MAXSIZE)) > 0)
+    {
+        ToUpper(cn->requestType);
         PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) INPUT_OPER,&cn->ioStatus);
     }
 }
@@ -189,18 +198,16 @@ VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize = 0;
     MessageProcessor processor;
-    char * msg;
-    if ((processor = processorForMessageType(cn->bufferIn)) == NULL)
+    if ((processor = processorForMessageType(cn->requestType)) == NULL)
     {
-        LoggerMessage(cn->log, "Handler - Unknown message type(%s). Servicing ending.", cn->bufferIn);
+        LoggerMessage(cn->log, "Handler - Unknown message type(%s). Servicing ending.", cn->requestType);
         PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) OUTPUT_OPER,&cn->ioStatus);
         return;
 
     }
-    msg = cn->bufferIn;
     // Dispatch request processing
-    LoggerMessage(cn->log, "Start process message type %s\n", msg);
+    LoggerMessage(cn->log, "Start process message type %s\n", cn->requestType);
     lineSize = processor(cn);
-    LoggerMessage(cn->log, "End process message type %s\n", msg);
+    LoggerMessage(cn->log, "End process message type %s\n", cn->requestType);
     PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) OUTPUT_OPER,&cn->ioStatus);
 }

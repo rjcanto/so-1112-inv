@@ -17,16 +17,15 @@ HANDLE completionPort;
 
 UINT WINAPI ProcessConnection(LPVOID arg) {
     SOCKET connectSocket = (SOCKET) arg;
-	
-    ConnectionInit(&connection, connectSocket, &log);
+    if (connection.socket == 0){
+        ConnectionInit(&connection, connectSocket, &log);
 
-    /* Associate Connection Socket to Completion Port */
-     if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, 0, (DWORD) MAX_THREADS)) {
-        LoggerMessage(&log, "Error associating device to IO completion port!\n");
-        return 5;
+        /* Associate Connection Socket to Completion Port */
+         if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, 0, (DWORD) MAX_THREADS)) {
+            LoggerMessage(&log, "Error associating device to IO completion port!\n");
+            return 5;
+        }
     }
-    
-
     LoggerMessage(&log, "Start connection processing");
     PostQueuedCompletionStatus(completionPort, 0,OUTPUT_OPER, &connection.ioStatus);
 
