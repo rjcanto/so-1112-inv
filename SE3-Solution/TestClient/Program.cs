@@ -133,7 +133,7 @@ namespace TestClient
 
 			Console.WriteLine("\nPress enter to continue test...");
             Console.ReadLine();
-
+    
 			/* Unregist one entry */
 			Console.WriteLine("Unregist one zpto entry.");
             Unregister("zpto", "192.1.1.1", 5555);
@@ -162,6 +162,7 @@ namespace TestClient
             ListLocations("ypto");
             Console.WriteLine("List locations zpto");
             ListLocations("zpto");
+      
         }
     }
 }
