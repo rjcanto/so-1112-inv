@@ -5,8 +5,9 @@
  * Sistemas Operativos - Inverno 2011-2012
  *
  * Cliente de teste do servidor de file tracking.
+ *  Modificamos o protocolo de comunicação de forma a que os argumentos para o register/unregister sejam separados por ; 
  */
- 
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,11 +33,11 @@ namespace TestClient
 
                 // Send message payload
                 foreach(string file in files)
-                    output.WriteLine(string.Format("{0}:{1}:{2}", file, adress, port));
-
+                    output.Write(string.Format(";{0}:{1}:{2}", file, adress, port));
+                    //output.Write(";file1:192.0.1.155:84");
                 // Send message end mark
                 output.WriteLine();
-
+                output.WriteLine("LIST_FILES");
                 output.Close();
                 client.Close();
             }
@@ -53,7 +54,7 @@ namespace TestClient
                 // Send request type line
                 output.WriteLine("UNREGISTER");
                 // Send message payload
-                output.WriteLine(string.Format("{0}:{1}:{2}", file, adress, port));
+                output.Write(string.Format(";{0}:{1}:{2}", file, adress, port));
                 // Send message end mark
                 output.WriteLine();
 
@@ -108,6 +109,8 @@ namespace TestClient
                 StreamReader input = new StreamReader(socket.GetStream());
                 while ((line = input.ReadLine()) != null && line != string.Empty)
                     Console.WriteLine(line);
+
+                
 
                 output.Close();
                 socket.Close();
