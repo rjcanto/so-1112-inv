@@ -22,8 +22,8 @@ extern "C" {
 typedef struct Connection  {
 //TODO Connection in asynchronous mode
   OVERLAPPED ioStatus;
-	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
-	WSABUF bufferOut;	/* buffer usado na escrita de dados da ligação */
+	CHAR bufferIn[BUFFERSIZE];	/* buffer usado na leitura de dados da ligação */
+	CHAR bufferOut[BUFFERSIZE];	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
 	int wPos;					/* índice que identifica o que já escrito no buffer */
 	int len;					/* número de bytes presentes no buffer(usado na leitura) */
@@ -40,13 +40,13 @@ Connection ConnectionsList[MAX_CONNECTIONS];
 
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
-		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
-		(c)->bufferIn.buf[(c)->rPos++]
+		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn[(c)->rPos++]) : \
+		(c)->bufferIn[(c)->rPos++]
 
 #define cputchar(cn, c)  do { \
 		if ((cn)->wPos == BUFFERSIZE) \
 			ConnectionFlushBufferToSocket(cn);	\
-	    (cn)->bufferOut.buf[cn->wPos++] = (c); \
+	    (cn)->bufferOut[cn->wPos++] = (c); \
 		} while(0)
 
 VOID ConnectionInit(PConnection c, SOCKET s, Logger *log);

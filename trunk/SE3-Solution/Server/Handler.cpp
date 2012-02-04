@@ -63,7 +63,7 @@ static int ProcessUnregisterMessage(PConnection cn) {
 
         if (nElems != 3)
         {
-            LoggerMessage(cn->log, "Handler - Invalid REGISTER message.");
+            LoggerMessage(cn->log, "Handler - Invalid UNREGISTER message.");
             return -1;
         }
 
@@ -156,7 +156,7 @@ static MessageProcessor processorForMessageType(char *msgType) {
     return NULL;
 }
 
-VOID ProcessRequest(PConnection cn) {
+/**VOID ProcessRequest(PConnection cn) {
     char requestType[MAXSIZE];
 
     int lineSize;
@@ -176,13 +176,12 @@ VOID ProcessRequest(PConnection cn) {
         LoggerMessage(cn->log, "End process message type %s\n", requestType);
     }
 }
-
+*/
 VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize;
-
-    if ( (lineSize = ConnectionGetLine(cn, cn->bufferIn.buf, cn->bufferIn.len)) > 0)
+    if ( (lineSize = ConnectionGetLine(cn, cn->bufferIn, BUFFERSIZE)) > 0)
     {   
-        ToUpper(cn->bufferIn.buf);
+        ToUpper(cn->bufferIn);
         PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) INPUT_OPER,&cn->ioStatus);
     }
 }
@@ -190,15 +189,18 @@ VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize = 0;
     MessageProcessor processor;
-    
-    if ((processor = processorForMessageType(cn->bufferIn.buf)) == NULL)
+    char * msg;
+    if ((processor = processorForMessageType(cn->bufferIn)) == NULL)
     {
-        LoggerMessage(cn->log, "Handler - Unknown message type(%s, size=%d). Servicing ending.", cn->bufferOut.buf, lineSize);
+        LoggerMessage(cn->log, "Handler - Unknown message type(%s). Servicing ending.", cn->bufferIn);
+        PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) OUTPUT_OPER,&cn->ioStatus);
         return;
+
     }
+    msg = cn->bufferIn;
     // Dispatch request processing
-    LoggerMessage(cn->log, "Start process message type %s\n", cn->bufferOut.buf);
+    LoggerMessage(cn->log, "Start process message type %s\n", msg);
     lineSize = processor(cn);
-    LoggerMessage(cn->log, "End process message type %s\n", cn->bufferOut.buf);
+    LoggerMessage(cn->log, "End process message type %s\n", msg);
     PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) OUTPUT_OPER,&cn->ioStatus);
 }

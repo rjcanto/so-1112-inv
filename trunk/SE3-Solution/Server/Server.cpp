@@ -9,7 +9,7 @@ static Logger log;	/* the Logger */
 DWORD threadsCounter;
 DWORD activeThreadsCounter;
 CRITICAL_SECTION mutex;
-
+Connection connection;
 /*
 the I/O Completion Port
 */
@@ -17,20 +17,24 @@ HANDLE completionPort;
 
 UINT WINAPI ProcessConnection(LPVOID arg) {
     SOCKET connectSocket = (SOCKET) arg;
-    Connection connection;
 	
     ConnectionInit(&connection, connectSocket, &log);
 
     /* Associate Connection Socket to Completion Port */
-    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, INPUT_OPER, (DWORD) MAX_THREADS)) {
+     if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, 0, (DWORD) MAX_THREADS)) {
         LoggerMessage(&log, "Error associating device to IO completion port!\n");
         return 5;
     }
+    
 
     LoggerMessage(&log, "Start connection processing");
+    PostQueuedCompletionStatus(completionPort, 0,OUTPUT_OPER, &connection.ioStatus);
+
+    /**
     ProcessRequest(&connection);
     LoggerMessage(&log, "End connection processing");
     closesocket(connectSocket);
+    */
     return 0;
 }
 
@@ -43,22 +47,22 @@ VOID CreateThreadPool() {
 UINT WINAPI RunOperation(LPVOID arg) {
     DWORD transferedBytes;
     DWORD key;
-    Connection *ConnectionsList;
+    Connection *Connection;
 
     while (TRUE) {
         if (!GetQueuedCompletionStatus(
                             completionPort
                             , &transferedBytes
                             , &key
-                            , (OVERLAPPED **) &ConnectionsList
-                            , MAX_INACTIVE_TIME))
+                            , (OVERLAPPED **) &Connection
+                            , INFINITE))
         {
             if(GetLastError() == WAIT_TIMEOUT){
                 EnterCriticalSection(&mutex);
                 if (threadsCounter > MIN_THREADS) {
                     threadsCounter--;
                     LeaveCriticalSection(&mutex);
-                    break;
+                    return -1;
                 } else {
                     LeaveCriticalSection(&mutex);
                     continue;
@@ -67,22 +71,20 @@ UINT WINAPI RunOperation(LPVOID arg) {
                 EnterCriticalSection(&mutex);
                 threadsCounter--;
                 LoggerMessage(&log, "Error %d in GetQueuedCompletionStatus.\n", GetLastError());
-                break;
+                return -1;
                 LeaveCriticalSection(&mutex);
             }
         }
+        EnterCriticalSection(&mutex);
         switch (key) {
         case INPUT_OPER:
-            EnterCriticalSection(&mutex);
-            ProcessOutputRequest(ConnectionsList, completionPort);
-            LeaveCriticalSection(&mutex);        
+            ProcessOutputRequest(Connection, completionPort);
             break;
         case OUTPUT_OPER:
-            EnterCriticalSection(&mutex);
-            ProcessInputRequest(ConnectionsList, completionPort);
-            LeaveCriticalSection(&mutex);
+            ProcessInputRequest(Connection, completionPort);
             break;
-        }   
+        }  
+        LeaveCriticalSection(&mutex); 
     }	
 }
 
@@ -132,11 +134,11 @@ int _tmain (int argc, LPCTSTR argv []) {
     }
 
     /* Associate Server Socket to Completion Port */
-    if (!CreateIoCompletionPort((HANDLE) srvSock,completionPort, OUTPUT_OPER, (DWORD) MAX_THREADS)) {
+    if (!CreateIoCompletionPort((HANDLE) srvSock,completionPort, 0, (DWORD) MAX_THREADS)) {
         LoggerMessage(&log, "Error associating device to IO completion port!\n");
         return 5;
     }     
-
+    
 	/*	
 	 * Prepare the socket address structure for binding the
 	 * server socket to port number "reserved" for this service.
@@ -155,6 +157,8 @@ int _tmain (int argc, LPCTSTR argv []) {
         return 1;
     }
 
+    CreateThreadPool();
+    InitializeCriticalSection(&mutex);
     /* Main thread becomes listening/connecting/monitoring thread */
     /* Create a new thread to process the connection */
     while (true) {
@@ -167,7 +171,6 @@ int _tmain (int argc, LPCTSTR argv []) {
             break;
         }
         LoggerMessage(&log, "Connected with %s, port %d.\n", inet_ntoa(connectSAddr.sin_addr), connectSAddr.sin_port);
-
         ProcessConnection((LPVOID) connectSock);
 
     }
