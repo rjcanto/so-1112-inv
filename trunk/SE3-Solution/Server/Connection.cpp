@@ -183,6 +183,11 @@ VOID  ConnectionInit(PConnection c, SOCKET s, Logger *log) {
     c->log = log;
 }
 
+VOID ConnectionEnd(PConnection c)
+{
+    closesocket(c->socket);
+    free(c);
+}
 
 //VOID ConnectionTest() {
 //	Connection cn;

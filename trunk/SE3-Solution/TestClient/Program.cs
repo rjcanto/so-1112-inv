@@ -110,8 +110,6 @@ namespace TestClient
                 while ((line = input.ReadLine()) != null && line != string.Empty)
                     Console.WriteLine(line);
 
-                
-
                 output.Close();
                 socket.Close();
             }

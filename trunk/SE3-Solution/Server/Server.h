@@ -8,10 +8,11 @@
 #define MAXSIZE 1024
 #define MAX_THREADS 8
 #define MIN_THREADS 2
-#define MAX_CONNECTIONS 8
+#define MAX_CONNECTIONS 2
 #define MAX_INACTIVE_TIME 15000
-#define INPUT_OPER 0
-#define OUTPUT_OPER 1
+#define INPUT_OPER 1
+#define OUTPUT_OPER 2
+#define INIT_OPER 0
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,10 +33,6 @@ typedef struct Connection  {
 	Logger *log;				/* processador das mensagens de log */
 } Connection, *PConnection;
 
-/*
-  Lista de conecções com operações  
-*/
-Connection ConnectionsList[MAX_CONNECTIONS];
 
 /* macros for buffered char I/O */
 
@@ -51,6 +48,7 @@ Connection ConnectionsList[MAX_CONNECTIONS];
 		} while(0)
 
 VOID ConnectionInit(PConnection c, SOCKET s, Logger *log);
+VOID ConnectionEnd(PConnection c);
 
 UINT WINAPI RunOperation(LPVOID arg) ;
 

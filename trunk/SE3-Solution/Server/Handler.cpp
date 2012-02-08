@@ -193,6 +193,13 @@ VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
         ToUpper(cn->requestType);
         PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) INPUT_OPER,&cn->ioStatus);
     }
+    else {
+        if(lineSize == 0)
+        {
+            LoggerMessage(cn->log, "End connection processing");
+            ConnectionEnd(cn);
+        }
+    }
 }
 
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
@@ -201,7 +208,7 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     if ((processor = processorForMessageType(cn->requestType)) == NULL)
     {
         LoggerMessage(cn->log, "Handler - Unknown message type(%s). Servicing ending.", cn->requestType);
-        PostQueuedCompletionStatus(completionPort, lineSize,(ULONG_PTR) OUTPUT_OPER,&cn->ioStatus);
+        PostQueuedCompletionStatus(completionPort, 0, (ULONG_PTR)INIT_OPER, &cn->ioStatus);
         return;
 
     }
