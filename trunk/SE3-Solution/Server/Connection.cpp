@@ -5,13 +5,14 @@
 * Used on socket buffered I/O
 */
 void ConnectionFillBufferFromSocket(PConnection c) {
-    
-    c->len= recv(c->socket, c->bufferIn, BUFFERSIZE, 0);
+ /**   
+    c->len= recv(c->socket, c->bufferIn.buf, BUFFERSIZE, 0);
     if (c->len <=0) {
         int a=2;
     }
     c->rPos = 0;
-/**
+/**/
+/**/
     c->ioStatus.Offset = 0;
     c->ioStatus.OffsetHigh = 0;
 
@@ -173,12 +174,13 @@ void ConnectionPut(PConnection cn, char* format, ...) {
 * Connection initialization
 */
 
-VOID  ConnectionInit(PConnection c, SOCKET s, Logger *log) {
+VOID  ConnectionInit(PConnection c, SOCKET s, Logger *log, int key) {
     ZeroMemory(c, sizeof(Connection));
-    /**
-    c->bufferIn = (char *)malloc(BUFFERSIZE);
-    c->bufferOut = (char *)malloc(BUFFERSIZE);
+    c->bufferIn.buf = (char *)malloc(BUFFERSIZE);
+    c->bufferIn.len = BUFFERSIZE;
+    /*c->bufferOut = (char *)malloc(BUFFERSIZE);
     */
+    c->key = key;
     c->socket=s;
     c->log = log;
 }

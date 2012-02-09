@@ -6,13 +6,13 @@
 #define SERVER_PORT 8888   /* Well known server port. */
 #define MAX_PENDING_CONNECTIONS 1024
 #define MAXSIZE 1024
-#define MAX_THREADS 8
+#define MAX_THREADS 3
 #define MIN_THREADS 2
 #define MAX_CONNECTIONS 2
 #define MAX_INACTIVE_TIME 15000
-#define INPUT_OPER 1
-#define OUTPUT_OPER 2
-#define INIT_OPER 0
+#define RECV_OPER 1
+#define SEND_OPER 2
+#define START_OPER 0
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,15 +22,16 @@ extern "C" {
 */
 typedef struct Connection  {
 //TODO Connection in asynchronous mode
-  OVERLAPPED ioStatus;
+  WSAOVERLAPPED ioStatus;
   CHAR requestType[MAXSIZE];
-	CHAR bufferIn[BUFFERSIZE];	/* buffer usado na leitura de dados da ligação */
+	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
 	CHAR bufferOut[BUFFERSIZE];	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
 	int wPos;					/* índice que identifica o que já escrito no buffer */
 	int len;					/* número de bytes presentes no buffer(usado na leitura) */
 	SOCKET socket;				/* o socket de onde o buffer foi lidos ou para onde vai ser escrito */
 	Logger *log;				/* processador das mensagens de log */
+  int key;
 } Connection, *PConnection;
 
 
@@ -38,8 +39,8 @@ typedef struct Connection  {
 
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
-		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn[(c)->rPos++]) : \
-		(c)->bufferIn[(c)->rPos++]
+		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
+		(c)->bufferIn.buf[(c)->rPos++]
 
 #define cputchar(cn, c)  do { \
 		if ((cn)->wPos == BUFFERSIZE) \
@@ -47,7 +48,7 @@ typedef struct Connection  {
 	    (cn)->bufferOut[cn->wPos++] = (c); \
 		} while(0)
 
-VOID ConnectionInit(PConnection c, SOCKET s, Logger *log);
+VOID ConnectionInit(PConnection c, SOCKET s, Logger *log, int key);
 VOID ConnectionEnd(PConnection c);
 
 UINT WINAPI RunOperation(LPVOID arg) ;
