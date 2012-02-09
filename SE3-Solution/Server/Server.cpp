@@ -5,7 +5,7 @@
 
 /*Global Status*/
 static Logger log;	/* the Logger */
-DWORD threadsCounter;
+DWORD threadsCounter = MAX_THREADS;
 DWORD activeThreadsCounter;
 CRITICAL_SECTION mutex;
 
@@ -14,18 +14,19 @@ the I/O Completion Port
 */
 HANDLE completionPort;
 
-UINT WINAPI ProcessConnection(LPVOID arg) {
+UINT WINAPI StartConnection(LPVOID arg) {
     SOCKET connectSocket = (SOCKET) arg;
     Connection* connection = (Connection*)malloc(sizeof(Connection));
-    ConnectionInit(connection, connectSocket, &log);
+    ConnectionInit(connection, connectSocket, &log, START_OPER);
+
     /* Associate Connection Socket to Completion Port */
-    /**if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, 0, 0)) {
+    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, 0, 0)) {
         LoggerMessage(&log, "Error associating device to IO completion port!\n");
         return 5;
     }
-    */
+    
     LoggerMessage(&log, "Start connection processing");
-    PostQueuedCompletionStatus(completionPort, 0,INIT_OPER, &connection->ioStatus);
+    PostQueuedCompletionStatus(completionPort, 0,0, &connection->ioStatus);
 
     /**
     ProcessRequest(&connection);
@@ -36,9 +37,14 @@ UINT WINAPI ProcessConnection(LPVOID arg) {
 }
 
 VOID CreateThreadPool() {
-	for (int i=0; i < MAX_THREADS; ++i) {
+	for (int i=0; i < MIN_THREADS; ++i) {
 		_beginthreadex(NULL, 0, RunOperation,NULL,0, NULL);
 	}
+}
+
+VOID AddThread()
+{
+    _beginthreadex(NULL, 0, RunOperation,NULL,0, NULL);
 }
 
 UINT WINAPI RunOperation(LPVOID arg) {
@@ -52,7 +58,7 @@ UINT WINAPI RunOperation(LPVOID arg) {
                             , &transferedBytes
                             , &key
                             , (OVERLAPPED **) &Connection
-                            , INFINITE))
+                            , MAX_INACTIVE_TIME))
         {
             if(GetLastError() == WAIT_TIMEOUT){
                 EnterCriticalSection(&mutex);
@@ -65,26 +71,50 @@ UINT WINAPI RunOperation(LPVOID arg) {
                     continue;
                 }
             } else {
-                EnterCriticalSection(&mutex);
-                threadsCounter--;
                 LoggerMessage(&log, "Error %d in GetQueuedCompletionStatus.\n", GetLastError());
                 return -1;
-                LeaveCriticalSection(&mutex);
             }
         }
+
         EnterCriticalSection(&mutex);
-        switch (key) {
-        case INPUT_OPER:
+        activeThreadsCounter++;
+        LeaveCriticalSection(&mutex);
+
+        if (threadsCounter == activeThreadsCounter)
+        {
+            AddThread();
+            EnterCriticalSection(&mutex);
+            threadsCounter++;
+            LeaveCriticalSection(&mutex);
+        }
+
+        switch (Connection->key) {
+        case RECV_OPER:
+            EnterCriticalSection(&mutex);
             ProcessOutputRequest(Connection, completionPort);
+            LeaveCriticalSection(&mutex); 
             break;
-        case INIT_OPER:
-            ProcessInputRequest(Connection, completionPort);
+        case START_OPER:
+            Connection->key = RECV_OPER;
+            ConnectionFillBufferFromSocket(Connection);
             break;
-        case OUTPUT_OPER:
+        case SEND_OPER:
             ProcessInputRequest(Connection, completionPort);
             break;
         }  
-        LeaveCriticalSection(&mutex); 
+
+        EnterCriticalSection(&mutex);
+        if (threadsCounter > MAX_THREADS)
+        {
+            threadsCounter--;
+            activeThreadsCounter--;
+            LeaveCriticalSection(&mutex);
+            return 0;
+        }
+        else{
+            activeThreadsCounter--;
+            LeaveCriticalSection(&mutex);
+        }
     }	
 }
 
@@ -121,23 +151,17 @@ int _tmain (int argc, LPCTSTR argv []) {
     StoreInit();
 
     /* Create completion port*/
-    if ((completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, MAX_THREADS)) == NULL) {
+    if ((completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, MIN_THREADS)) == NULL) {
         LoggerMessage(&log, "Error creation IO completion port!");
         return 4;
     }
 
     /*	Follow the standard server socket/bind/listen/accept sequence */
-    srvSock = socket(PF_INET, SOCK_STREAM, 0);
+    srvSock = WSASocket(PF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
     if (srvSock == INVALID_SOCKET) {
         LoggerMessage(&log, "Failed server socket() call");
         return 3;
-    }
-
-    /* Associate Server Socket to Completion Port */
-    if (!CreateIoCompletionPort((HANDLE) srvSock,completionPort, 0, (DWORD) MAX_THREADS)) {
-        LoggerMessage(&log, "Error associating device to IO completion port!\n");
-        return 5;
-    }     
+    }    
     
 	/*	
 	 * Prepare the socket address structure for binding the
@@ -171,10 +195,8 @@ int _tmain (int argc, LPCTSTR argv []) {
             break;
         }
         LoggerMessage(&log, "Connected with %s, port %d.\n", inet_ntoa(connectSAddr.sin_addr), connectSAddr.sin_port);
-        ProcessConnection((LPVOID) connectSock);
-
+        StartConnection((LPVOID) connectSock);
     }
-
     shutdown (srvSock, SD_BOTH); /* Disallow sends and receives */
     closesocket (srvSock);
     WSACleanup();
