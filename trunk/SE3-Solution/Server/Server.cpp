@@ -20,19 +20,14 @@ UINT WINAPI StartConnection(LPVOID arg) {
     ConnectionInit(connection, connectSocket, &log, START_OPER);
 
     /* Associate Connection Socket to Completion Port */
-    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, 0, 0)) {
+    if (!CreateIoCompletionPort((HANDLE) connectSocket,completionPort, (ULONG_PTR)connection, 0)) {
         LoggerMessage(&log, "Error associating device to IO completion port!\n");
         return 5;
     }
     
     LoggerMessage(&log, "Start connection processing");
-    PostQueuedCompletionStatus(completionPort, 0,0, &connection->ioStatus);
+    PostQueuedCompletionStatus(completionPort, -1, (ULONG_PTR)connection, &connection->ioStatus);
 
-    /**
-    ProcessRequest(&connection);
-    LoggerMessage(&log, "End connection processing");
-    closesocket(connectSocket);
-    */
     return 0;
 }
 
@@ -50,14 +45,14 @@ VOID AddThread()
 UINT WINAPI RunOperation(LPVOID arg) {
     DWORD transferedBytes;
     DWORD key;
-    Connection *Connection;
-
+    Connection *connection;
+    WSAOVERLAPPED *ovl;
     while (TRUE) {
         if (!GetQueuedCompletionStatus(
                             completionPort
                             , &transferedBytes
-                            , &key
-                            , (OVERLAPPED **) &Connection
+                            , (PULONG_PTR) &connection
+                            , (OVERLAPPED **) &ovl
                             , MAX_INACTIVE_TIME))
         {
             if(GetLastError() == WAIT_TIMEOUT){
@@ -87,23 +82,31 @@ UINT WINAPI RunOperation(LPVOID arg) {
             threadsCounter++;
             LeaveCriticalSection(&mutex);
         }
-
-        switch (Connection->key) {
+        EnterCriticalSection(&mutex);
+        switch (connection->key) {
         case RECV_OPER:
-            EnterCriticalSection(&mutex);
-            ProcessOutputRequest(Connection, completionPort);
-            LeaveCriticalSection(&mutex); 
+            //EnterCriticalSection(&mutex);
+            ProcessOutputRequest(connection, completionPort);
+            //LeaveCriticalSection(&mutex); 
             break;
         case START_OPER:
-            Connection->key = RECV_OPER;
-            ConnectionFillBufferFromSocket(Connection);
+            ReadFromSocket(connection);
             break;
         case SEND_OPER:
-            ProcessInputRequest(Connection, completionPort);
+            if (transferedBytes == 0) {
+					      ConnectionEnd(connection);
+				    }
+            else {
+                //EnterCriticalSection(&mutex);
+                if(transferedBytes != -1)
+                    connection->len = transferedBytes;
+                ProcessInputRequest(connection, completionPort);
+                //LeaveCriticalSection(&mutex);
+            }
             break;
         }  
 
-        EnterCriticalSection(&mutex);
+        //EnterCriticalSection(&mutex);
         if (threadsCounter > MAX_THREADS)
         {
             threadsCounter--;

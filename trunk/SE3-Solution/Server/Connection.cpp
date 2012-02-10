@@ -5,6 +5,7 @@
 * Used on socket buffered I/O
 */
 void ConnectionFillBufferFromSocket(PConnection c) {
+    DWORD flags=0;
  /**   
     c->len= recv(c->socket, c->bufferIn.buf, BUFFERSIZE, 0);
     if (c->len <=0) {
@@ -16,15 +17,15 @@ void ConnectionFillBufferFromSocket(PConnection c) {
     c->ioStatus.Offset = 0;
     c->ioStatus.OffsetHigh = 0;
 
-    WSARecv(c->socket
+    if (WSARecv(c->socket
         , &c->bufferIn
-        , BUFFERSIZE
-        , (LPDWORD)&c->len
-        , 0
+        , 1
+        , NULL
+        , &flags
         , &c->ioStatus
         , NULL
-    );
-    c->rPos=0;
+    )== SOCKET_ERROR && (WSAGetLastError()) != WSA_IO_PENDING) 
+    LoggerMessage(c->log,"Error %d start receiving request\n", WSAGetLastError());
 /**/
 }
 
@@ -190,7 +191,6 @@ VOID ConnectionEnd(PConnection c)
     closesocket(c->socket);
     free(c);
 }
-
 //VOID ConnectionTest() {
 //	Connection cn;
 //	SOCKET s=INVALID_SOCKET;

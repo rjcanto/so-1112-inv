@@ -37,10 +37,15 @@ typedef struct Connection  {
 
 /* macros for buffered char I/O */
 
+/*/
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
-		ConnectionFillBufferFromSocket(c), ((c)->len == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
+		ReadFromSocket(c), ((c)-> == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
 		(c)->bufferIn.buf[(c)->rPos++]
+/**/
+#define cgetchar(c)  \
+	((c)->rPos == (c)->len) ? \
+		ReadFromSocket(c),-1 : (c)->bufferIn.buf[(c)->rPos++]
 
 #define cputchar(cn, c)  do { \
 		if ((cn)->wPos == BUFFERSIZE) \
@@ -72,6 +77,7 @@ VOID ToUpper(char *str);
 
 
 /* Handler entry point */
+VOID ReadFromSocket(PConnection cn);
 VOID ProcessRequest(PConnection cn);
 VOID ProcessInputRequest(PConnection cn, HANDLE completionPort);
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort);

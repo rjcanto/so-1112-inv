@@ -132,8 +132,12 @@ static int ProcessListLocationsMessage(PConnection cn) {
     nameSize = ConnectionGetLine(cn, fileName, MAXSIZE);
 
     endPoints = StoreGetFileLocations(fileName, &count);
-    if (endPoints==NULL) 
+    if (endPoints==NULL)
+    {
+        cputchar(cn, '\n');
+        ConnectionFlushBufferToSocket(cn);
         return -1;
+    }
     for(i=0; i < count; ++i)
         ConnectionPut(cn, "%s:%d\n", inet_ntoa(endPoints[i].sin_addr), endPoints[i].sin_port); 
     cputchar(cn, '\n');
@@ -192,14 +196,7 @@ VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
     {
         ToUpper(cn->requestType);
         cn->key = RECV_OPER;
-        PostQueuedCompletionStatus(completionPort, lineSize,0,&cn->ioStatus);
-    }
-    else {
-        if(lineSize == 0)
-        {
-            LoggerMessage(cn->log, "End connection processing");
-            ConnectionEnd(cn);
-        }
+        PostQueuedCompletionStatus(completionPort, -1,(ULONG_PTR)cn,&cn->ioStatus);
     }
 }
 
@@ -209,8 +206,8 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     if ((processor = processorForMessageType(cn->requestType)) == NULL)
     {
         LoggerMessage(cn->log, "Handler - Unknown message type(%s). Servicing ending.", cn->requestType);
-        cn->key = START_OPER;
-        PostQueuedCompletionStatus(completionPort, 0, 0, &cn->ioStatus);
+        cn->key = SEND_OPER;
+        PostQueuedCompletionStatus(completionPort, -1, (ULONG_PTR)cn, &cn->ioStatus);
         return;
 
     }
@@ -219,5 +216,11 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     lineSize = processor(cn);
     LoggerMessage(cn->log, "End process message type %s\n", cn->requestType);
     cn->key = SEND_OPER;
-    PostQueuedCompletionStatus(completionPort, lineSize,0,&cn->ioStatus);
+    PostQueuedCompletionStatus(completionPort, -1,(ULONG_PTR)cn,&cn->ioStatus);
+}
+
+VOID ReadFromSocket(PConnection cn)
+{
+    cn->key = SEND_OPER;
+    ConnectionFillBufferFromSocket(cn);
 }
