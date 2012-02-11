@@ -10,6 +10,7 @@
 #define MIN_THREADS 2
 #define MAX_CONNECTIONS 2
 #define MAX_INACTIVE_TIME 15000
+
 #define RECV_PARTIAL 3
 #define RECV_OPER 1
 #define SEND_OPER 2
@@ -30,8 +31,8 @@ typedef struct Connection  {
 	int wPos;					/* índice que identifica o que já escrito no buffer */
 	int len;					/* número de bytes presentes no buffer(usado na leitura) */
   int lastReq;
-  CHAR requestType[MAXSIZE];
-  WSABUF streamBuf;
+  CHAR requestType[MAXSIZE]; /*string que identifica o tipo do pedido*/
+  WSABUF streamBuf; /*buffer usado em pedido que não são recebido completamente*/
 	SOCKET socket;				/* o socket de onde o buffer foi lidos ou para onde vai ser escrito */
 	Logger *log;				/* processador das mensagens de log */
   int key;
@@ -39,13 +40,6 @@ typedef struct Connection  {
 
 
 /* macros for buffered char I/O */
-
-/*/
-#define cgetchar(c)  \
-	((c)->rPos == (c)->len) ? \
-		ReadFromSocket(c), ((c)-> == 0 ? -1 : (c)->bufferIn.buf[(c)->rPos++]) : \
-		(c)->bufferIn.buf[(c)->rPos++]
-/**/
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
 		-1 : (c)->bufferIn.buf[(c)->rPos++]
@@ -78,7 +72,6 @@ int splitLine(char *line, char *words[], char delim, int nlines);
 BOOL Char2Wchar(TCHAR* pDest, char* pSrc, int dstLen);
 BOOL buildEndPoint(sockaddr_in *ep, int port, char *ipaddress);
 VOID ToUpper(char *str);
-
 
 /* Handler entry point */
 VOID ReadFromSocket(PConnection cn);
