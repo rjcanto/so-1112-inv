@@ -29,6 +29,23 @@ void ConnectionFillBufferFromSocket(PConnection c) {
 /**/
 }
 
+void ConnectionFillBufferFromSocketUsingStreamBuf(PConnection c)
+{
+    DWORD flags=0;
+    c->ioStatus.Offset = 0;
+    c->ioStatus.OffsetHigh = 0;
+
+    if (WSARecv(c->socket
+        , &c->streamBuf
+        , 1
+        , NULL
+        , &flags
+        , &c->ioStatus
+        , NULL
+    )== SOCKET_ERROR && (WSAGetLastError()) != WSA_IO_PENDING) 
+    LoggerMessage(c->log,"Error %d start receiving request\n", WSAGetLastError());
+}
+
 void ConnectionFlushBufferToSocket(PConnection c) {
     if (c->wPos > 0) {
         if (send(c->socket, c->bufferOut, c->wPos, 0) != c->wPos) {
@@ -36,21 +53,6 @@ void ConnectionFlushBufferToSocket(PConnection c) {
         }
         c->wPos =0;
     }
-    
-/** 
-    if (c->wPos > 0)
-    {
-        if ( WSASend( c->socket
-            ,&c->bufferOut
-            ,BUFFERSIZE
-            ,(LPDWORD)&c->wPos
-            ,0
-            ,&c->ioStatus
-            ,NULL) == c->wPos)
-            
-            c->wPos = 0; 
-    }
-/**/
 }
 
 /*
@@ -100,14 +102,6 @@ void ConnectionPutInt(PConnection cn, int num) {
 void ConnectionCopyBytes(PConnection cn, LPVOID mapAddress, DWORD fSize) {
     ConnectionFlushBufferToSocket(cn);
     send(cn->socket, (const char *) mapAddress, fSize, 0);
-/**
-    WSASend(cn->socket
-        , &cn->bufferOut
-        , BUFFERSIZE
-        , &fSize
-        , 0
-        ,
-/**/
 }
 
 void ConnectionCopyFile(PConnection cn, HANDLE hFile, int fSize) {
@@ -179,8 +173,6 @@ VOID  ConnectionInit(PConnection c, SOCKET s, Logger *log, int key) {
     ZeroMemory(c, sizeof(Connection));
     c->bufferIn.buf = (char *)malloc(BUFFERSIZE);
     c->bufferIn.len = BUFFERSIZE;
-    /*c->bufferOut = (char *)malloc(BUFFERSIZE);
-    */
     c->key = key;
     c->socket=s;
     c->log = log;

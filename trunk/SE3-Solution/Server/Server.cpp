@@ -85,9 +85,7 @@ UINT WINAPI RunOperation(LPVOID arg) {
         EnterCriticalSection(&mutex);
         switch (connection->key) {
         case RECV_OPER:
-            //EnterCriticalSection(&mutex);
             ProcessOutputRequest(connection, completionPort);
-            //LeaveCriticalSection(&mutex); 
             break;
         case START_OPER:
             ReadFromSocket(connection);
@@ -97,16 +95,19 @@ UINT WINAPI RunOperation(LPVOID arg) {
 					      ConnectionEnd(connection);
 				    }
             else {
-                //EnterCriticalSection(&mutex);
                 if(transferedBytes != -1)
                     connection->len = transferedBytes;
                 ProcessInputRequest(connection, completionPort);
-                //LeaveCriticalSection(&mutex);
             }
+            break;
+        case RECV_PARTIAL:
+            if (transferedBytes == 0) {
+					      ConnectionEnd(connection);
+				    }
+            else VerifyRequestPartial(connection, transferedBytes, completionPort);
             break;
         }  
 
-        //EnterCriticalSection(&mutex);
         if (threadsCounter > MAX_THREADS)
         {
             threadsCounter--;

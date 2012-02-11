@@ -130,7 +130,7 @@ static int ProcessListLocationsMessage(PConnection cn) {
     DWORD count, i;
 
     nameSize = ConnectionGetLine(cn, fileName, MAXSIZE);
-
+    if (nameSize == -1) return -1;
     endPoints = StoreGetFileLocations(fileName, &count);
     if (endPoints==NULL)
     {
@@ -169,27 +169,6 @@ static MessageProcessor processorForMessageType(char *msgType) {
     return NULL;
 }
 
-/**VOID ProcessRequest(PConnection cn) {
-    char requestType[MAXSIZE];
-
-    int lineSize;
-
-    while ( (lineSize = ConnectionGetLine(cn, requestType, MAXSIZE)) > 0)
-    {   
-        MessageProcessor processor;
-        ToUpper(requestType);
-        if ((processor = processorForMessageType(requestType)) == NULL)
-        {
-            LoggerMessage(cn->log, "Handler - Unknown message type(%s, size=%d). Servicing ending.", requestType, lineSize);
-            break;
-        }
-        // Dispatch request processing
-        LoggerMessage(cn->log, "Start process message type %s\n", requestType);
-        processor(cn);
-        LoggerMessage(cn->log, "End process message type %s\n", requestType);
-    }
-}
-*/
 VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize;
     if ( (lineSize = ConnectionGetLine(cn, cn->requestType, MAXSIZE)) > 0)
@@ -198,6 +177,8 @@ VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
         cn->key = RECV_OPER;
         PostQueuedCompletionStatus(completionPort, -1,(ULONG_PTR)cn,&cn->ioStatus);
     }
+    else  if (lineSize == -1)
+        ReadFromSocket(cn);
 }
 
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
@@ -214,6 +195,14 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     // Dispatch request processing
     LoggerMessage(cn->log, "Start process message type %s\n", cn->requestType);
     lineSize = processor(cn);
+
+    // se o pedido não estiver estiver completo
+    if (lineSize == -1)
+    {
+        ReadFromSocket(cn);
+        return;
+    }
+    cn->lastReq = cn->rPos;
     LoggerMessage(cn->log, "End process message type %s\n", cn->requestType);
     cn->key = SEND_OPER;
     PostQueuedCompletionStatus(completionPort, -1,(ULONG_PTR)cn,&cn->ioStatus);
@@ -221,6 +210,32 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
 
 VOID ReadFromSocket(PConnection cn)
 {
-    cn->key = SEND_OPER;
-    ConnectionFillBufferFromSocket(cn);
+    if (cn->len == 0 || (cn->lastReq == cn->rPos))
+    {
+        cn->key = SEND_OPER;
+        ConnectionFillBufferFromSocket(cn);
+    }
+    else
+    {
+
+        if(cn->lastReq != 0)
+        {
+            cn->len = cn->len - cn->lastReq;
+            memmove(cn->bufferIn.buf, &cn->bufferIn.buf[cn->lastReq], cn->len);
+            cn->lastReq = 0;
+        }
+        cn->streamBuf.buf = (char*)malloc(BUFFERSIZE - cn->len);
+        cn->streamBuf.len = BUFFERSIZE - cn->len;
+        cn->rPos = 0;
+        cn->key = RECV_PARTIAL;
+        ConnectionFillBufferFromSocketUsingStreamBuf(cn);
+    }
+}
+
+VOID VerifyRequestPartial(PConnection cn, DWORD transferedBytes, HANDLE completionPort)
+{
+    memmove(&cn->bufferIn.buf[cn->len], cn->streamBuf.buf, transferedBytes);
+    cn->len += transferedBytes;
+    free(cn->streamBuf.buf);
+    ProcessInputRequest(cn, completionPort);
 }

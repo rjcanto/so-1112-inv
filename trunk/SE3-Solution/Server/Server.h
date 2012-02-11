@@ -10,6 +10,7 @@
 #define MIN_THREADS 2
 #define MAX_CONNECTIONS 2
 #define MAX_INACTIVE_TIME 15000
+#define RECV_PARTIAL 3
 #define RECV_OPER 1
 #define SEND_OPER 2
 #define START_OPER 0
@@ -23,12 +24,14 @@ extern "C" {
 typedef struct Connection  {
 //TODO Connection in asynchronous mode
   WSAOVERLAPPED ioStatus;
-  CHAR requestType[MAXSIZE];
 	WSABUF bufferIn;	/* buffer usado na leitura de dados da ligação */
 	CHAR bufferOut[BUFFERSIZE];	/* buffer usado na escrita de dados da ligação */
 	int rPos;					/* índice que identifica o que já lido do buffer */
 	int wPos;					/* índice que identifica o que já escrito no buffer */
 	int len;					/* número de bytes presentes no buffer(usado na leitura) */
+  int lastReq;
+  CHAR requestType[MAXSIZE];
+  WSABUF streamBuf;
 	SOCKET socket;				/* o socket de onde o buffer foi lidos ou para onde vai ser escrito */
 	Logger *log;				/* processador das mensagens de log */
   int key;
@@ -45,7 +48,7 @@ typedef struct Connection  {
 /**/
 #define cgetchar(c)  \
 	((c)->rPos == (c)->len) ? \
-		ReadFromSocket(c),-1 : (c)->bufferIn.buf[(c)->rPos++]
+		-1 : (c)->bufferIn.buf[(c)->rPos++]
 
 #define cputchar(cn, c)  do { \
 		if ((cn)->wPos == BUFFERSIZE) \
@@ -59,6 +62,7 @@ VOID ConnectionEnd(PConnection c);
 UINT WINAPI RunOperation(LPVOID arg) ;
 
 void ConnectionFillBufferFromSocket(PConnection c);
+void ConnectionFillBufferFromSocketUsingStreamBuf(PConnection c);
 void ConnectionFlushBufferToSocket(PConnection c);
 
 /* I/O Formatters */
@@ -78,7 +82,7 @@ VOID ToUpper(char *str);
 
 /* Handler entry point */
 VOID ReadFromSocket(PConnection cn);
-VOID ProcessRequest(PConnection cn);
+VOID VerifyRequestPartial(PConnection connection, DWORD transferedBytes , HANDLE completionPort);
 VOID ProcessInputRequest(PConnection cn, HANDLE completionPort);
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort);
 #ifdef __cplusplus
