@@ -101,7 +101,6 @@ namespace TestClient
                 // Send message payload
                 output.WriteLine(fileName);
                 // Send message end mark and flush it
-                output.WriteLine();
                 output.Flush();
 
                 // Read response
@@ -163,7 +162,7 @@ namespace TestClient
             ListLocations("ypto");
             Console.WriteLine("List locations zpto");
             ListLocations("zpto");
-      
+            Console.ReadLine();
         }
     }
 }
