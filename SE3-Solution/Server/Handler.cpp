@@ -169,16 +169,25 @@ static MessageProcessor processorForMessageType(char *msgType) {
     return NULL;
 }
 
+
+VOID PostCompletionPort(PConnection cn, int key, HANDLE completionPort)
+{
+    cn->key = key;
+    PostQueuedCompletionStatus(completionPort, -1, (ULONG_PTR) cn, &cn->ioStatus);
+}
+
 VOID ProcessInputRequest(PConnection cn, HANDLE completionPort) {
     int lineSize;
     if ( (lineSize = ConnectionGetLine(cn, cn->requestType, MAXSIZE)) > 0)
     {
         ToUpper(cn->requestType);
-        cn->key = RECV_OPER;
-        PostQueuedCompletionStatus(completionPort, -1,(ULONG_PTR)cn,&cn->ioStatus);
+        PostCompletionPort(cn, RECV_OPER, completionPort);
     }
-    else  if (lineSize == -1)
-        ReadFromSocket(cn);
+    else
+    {
+        if (lineSize == -1)
+            ReadFromSocket(cn);
+    }
 }
 
 VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
@@ -187,8 +196,7 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     if ((processor = processorForMessageType(cn->requestType)) == NULL)
     {
         LoggerMessage(cn->log, "Handler - Unknown message type(%s). Servicing ending.", cn->requestType);
-        cn->key = SEND_OPER;
-        PostQueuedCompletionStatus(completionPort, -1, (ULONG_PTR)cn, &cn->ioStatus);
+        PostCompletionPort(cn, SEND_OPER, completionPort);
         return;
 
     }
@@ -201,11 +209,29 @@ VOID ProcessOutputRequest(PConnection cn, HANDLE completionPort) {
     {
         ReadFromSocket(cn);
         return;
-    }
+    } 
+
+    //indica que o pedido foi realizado com sucesso, ie o buffer continha o pedido completo
     cn->lastReq = cn->rPos;
     LoggerMessage(cn->log, "End process message type %s\n", cn->requestType);
-    cn->key = SEND_OPER;
-    PostQueuedCompletionStatus(completionPort, -1,(ULONG_PTR)cn,&cn->ioStatus);
+    PostCompletionPort(cn, SEND_OPER, completionPort);
+}
+/**Ajusta o BufferIn, e faz uma leitura assicrona para obter o resto do pedido 
+Caso o tamanho do pedido seja superior ao BUFFERSIZE, esse pedido será descartado
+/**/
+VOID AdaptBufferIn(PConnection cn)
+{
+    if(cn->lastReq != 0)
+    {
+        cn->len = cn->len - cn->lastReq;
+        memmove(cn->bufferIn.buf, &cn->bufferIn.buf[cn->lastReq], cn->len);
+        cn->lastReq = 0;
+    }
+    cn->streamBuf.buf = (char*)malloc(BUFFERSIZE - cn->len);
+    cn->streamBuf.len = BUFFERSIZE - cn->len;
+    cn->rPos = 0;
+    cn->key = RECV_PARTIAL;
+    ConnectionFillBufferFromSocketUsingStreamBuf(cn);
 }
 
 VOID ReadFromSocket(PConnection cn)
@@ -217,18 +243,7 @@ VOID ReadFromSocket(PConnection cn)
     }
     else
     {
-
-        if(cn->lastReq != 0)
-        {
-            cn->len = cn->len - cn->lastReq;
-            memmove(cn->bufferIn.buf, &cn->bufferIn.buf[cn->lastReq], cn->len);
-            cn->lastReq = 0;
-        }
-        cn->streamBuf.buf = (char*)malloc(BUFFERSIZE - cn->len);
-        cn->streamBuf.len = BUFFERSIZE - cn->len;
-        cn->rPos = 0;
-        cn->key = RECV_PARTIAL;
-        ConnectionFillBufferFromSocketUsingStreamBuf(cn);
+        AdaptBufferIn(cn);  
     }
 }
 
