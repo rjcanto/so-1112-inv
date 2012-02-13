@@ -73,7 +73,6 @@ BOOL LoggerMessage(Logger *log, TCHAR *format, ...) {
 }
 
 BOOL LoggerMessage(Logger *log, char *format, ...) {
-    /**/
     char message[MAX_SIZE];
     va_list ap;
     time_t currTime;
@@ -81,7 +80,7 @@ BOOL LoggerMessage(Logger *log, char *format, ...) {
 
     if (log->startTime == 0) 
         return FALSE; /* not started logger */
-    /**/
+    
     va_start(ap,format);
     vsprintf(message, format, ap);
     currTime = time(NULL);
@@ -89,7 +88,6 @@ BOOL LoggerMessage(Logger *log, char *format, ...) {
     atime[strlen(atime)-1]=0;
     fprintf(log->stream, "%s: %s\n", atime, message);	 
     log->numRequests++;
-    /**/
     return TRUE;
 }
 

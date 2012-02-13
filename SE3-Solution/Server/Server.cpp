@@ -8,7 +8,6 @@ static Logger log;	/* the Logger */
 DWORD threadsCounter = MAX_THREADS;
 DWORD activeThreadsCounter;
 CRITICAL_SECTION mutex;
-
 /*
 the I/O Completion Port
 */
@@ -38,6 +37,11 @@ VOID CreateThreadPool() {
 }
 
 VOID AddThread()
+{
+    _beginthreadex(NULL, 0, RunOperation,NULL,0, NULL);
+}
+
+VOID CreateLoggerThread()
 {
     _beginthreadex(NULL, 0, RunOperation,NULL,0, NULL);
 }
@@ -187,6 +191,7 @@ int _tmain (int argc, LPCTSTR argv []) {
 
     CreateThreadPool();
     InitializeCriticalSection(&mutex);
+    CreateLoggerThread();
     /* Main thread becomes listening/connecting/monitoring thread */
     /* Create a new thread to process the connection */
     while (true) {
