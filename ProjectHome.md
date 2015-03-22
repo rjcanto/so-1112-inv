@@ -1,0 +1,1 @@
+Código referente às séries de exercícios resolvidos em Sistemas Operativos,Sem. Inverno, 2011/2012
